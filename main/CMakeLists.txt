@@ -1,3 +1,16 @@
-idf_component_register(SRCS "main.c" "RID_Payload.c"
-                    INCLUDE_DIRS "."
-                    REQUIRES nvs_flash bt esp_wifi esp_event esp_netif)
+idf_component_register(
+    SRCS
+        "main.c"
+        "../device/ble/ble.c"
+        "../device/wifi/wifi.c"
+        "../device/RID/RID_Payload.c"
+        "../device/RID/ble50.c"
+        "../device/RID/wifi_beacon.c"
+        "../device/RID/wifi_nan.c"
+    INCLUDE_DIRS
+        "."
+        "../device/ble"
+        "../device/wifi"
+        "../device/RID"
+    REQUIRES nvs_flash bt esp_wifi esp_event esp_netif
+)

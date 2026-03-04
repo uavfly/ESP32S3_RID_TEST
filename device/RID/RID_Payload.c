@@ -211,3 +211,71 @@ bool RIDPacket(const RIDBasicPacket *basic, const RIDPosVecPacket *posVec, const
     }
     return true;
 }
+
+void RIDContextInitDefaults(RIDContext *ctx)
+{
+    if (!ctx) {
+        return;
+    }
+
+    memset(ctx, 0, sizeof(*ctx));
+
+    ctx->basic.UA_Type = 2;
+    ctx->basic.ID_Type = 1;
+    RIDUasIDSerialize("TEST_UASID_12345", &ctx->basic);
+
+    ctx->rd.DescriptionType = 0;
+    RIDDescription("Test RID Description", &ctx->rd);
+
+    ctx->sys.ControlStationPosType = 1;
+    ctx->sys.RegionCode = 2;
+    ctx->sys.CoordType = 0;
+    ctx->sys.ControlStationLatitude = 350000000;
+    ctx->sys.ControlStationLongitude = 1100000000;
+    ctx->sys.AreaCount = 0;
+    ctx->sys.AreaRadius = 0;
+    ctx->sys.AreaAltitudeUpper = 0;
+    ctx->sys.AreaAltitudeLower = 0;
+    ctx->sys.UARunCategory = 1;
+    ctx->sys.UARunLevel = 0;
+    ctx->sys.ControlStationAltitude = 0;
+    ctx->sys.Timestamp = 0;
+    ctx->sys.reserved = 0;
+
+    RIDContextUpdatePosition(ctx, 300000000, 1200000000, 80, 0);
+}
+
+void RIDContextUpdatePosition(RIDContext *ctx, int32_t lat_1e7, int32_t lon_1e7, int16_t alt_agl, uint16_t ts_tenths)
+{
+    if (!ctx) {
+        return;
+    }
+
+    ctx->pos_vec.OperationalStatus = 2;
+    ctx->pos_vec.AltitudeType = 0;
+    ctx->pos_vec.TrackAngleEW = 0;
+    ctx->pos_vec.SpeedMultiplier = 0;
+    ctx->pos_vec.TrackAngle = 0;
+    ctx->pos_vec.GroundSpeed = 0;
+    ctx->pos_vec.VerticalSpeed = 0;
+    ctx->pos_vec.Latitude = lat_1e7;
+    ctx->pos_vec.Longitude = lon_1e7;
+    ctx->pos_vec.AltitudeAGL = alt_agl;
+    ctx->pos_vec.PressureAltitude = 0;
+    ctx->pos_vec.GeometricAltitude = 0;
+    ctx->pos_vec.Accuracy = 0;
+    ctx->pos_vec.SpeedAccuracy = 0;
+    ctx->pos_vec.Timestamp = ts_tenths;
+    ctx->pos_vec.TimestampAccuracy = 0;
+    ctx->pos_vec.reserved = 0;
+
+    ctx->sys.Timestamp = ts_tenths / 10;
+}
+
+bool RIDContextBuildPayload(const RIDContext *ctx, RIDPayloadBuffer *payloadbuff)
+{
+    if (!ctx || !payloadbuff) {
+        return false;
+    }
+    return RIDPacket(&ctx->basic, &ctx->pos_vec, &ctx->rd, &ctx->sys, payloadbuff);
+}

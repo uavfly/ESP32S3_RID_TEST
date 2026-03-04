@@ -122,6 +122,13 @@ typedef struct {
     uint8_t length; // 实际有效长度
 } RIDPayloadBuffer;
 
+typedef struct {
+    RIDBasicPacket basic;
+    RIDPosVecPacket pos_vec;
+    RIDRDPacket rd;
+    RIDSYSPacket sys;
+} RIDContext;
+
 // UASID 字符串序列化（写入 packet->UASID，不足补零，超出截断）
 void RIDUasIDSerialize(const char *str, RIDBasicPacket *packet);
 
@@ -171,3 +178,7 @@ bool RIDPacketNano(const RIDBasicPacket *basic, const RIDPosVecPacket *posVec,
  */
 bool RIDPacket(const RIDBasicPacket *basic, const RIDPosVecPacket *posVec, const RIDRDPacket *rd,
                const RIDSYSPacket *sys, RIDPayloadBuffer *payloadbuff);
+
+void RIDContextInitDefaults(RIDContext *ctx);
+void RIDContextUpdatePosition(RIDContext *ctx, int32_t lat_1e7, int32_t lon_1e7, int16_t alt_agl, uint16_t ts_tenths);
+bool RIDContextBuildPayload(const RIDContext *ctx, RIDPayloadBuffer *payloadbuff);

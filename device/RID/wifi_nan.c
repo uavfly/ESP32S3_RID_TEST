@@ -41,6 +41,7 @@ void wifi_nan_build_template(WiFi_NAN_packet *packet)
     memcpy(packet->frame, template_data, packet->length);
 }
 
+// 将 NAN Vendor Specific Public Action 帧模板中的 SA 和 BSSID 替换为指定 MAC 地址
 void wifi_nan_set_source_mac(WiFi_NAN_packet *packet, const uint8_t mac[6])
 {
     if (!packet || !mac) {

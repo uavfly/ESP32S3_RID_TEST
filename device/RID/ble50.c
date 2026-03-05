@@ -7,7 +7,8 @@
 
 #define TAG "RID_BLE50"
 
-bool ble_ad_data(const RIDPayloadBuffer *payload_buffer, uint8_t *msg_counter, RIDBleADData *ble_data)
+// 将 RIDPayloadBuffer 转换为 BLE AD 广播数据格式
+bool ble_5_0_ad_data(const RIDPayloadBuffer *payload_buffer, uint8_t *msg_counter, RIDBleADData *ble_data)
 {
     if (!payload_buffer || !msg_counter || !ble_data) {
         return false;
@@ -32,14 +33,30 @@ bool ble_ad_data(const RIDPayloadBuffer *payload_buffer, uint8_t *msg_counter, R
     return true;
 }
 
+// 将 RIDPayloadBuffer 通过 BLE 5.0 扩展广播发送
 bool ble_5_0_payload_send(uint8_t adv_handle, const RIDPayloadBuffer *payload_buffer, uint8_t *msg_counter)
 {
     RIDBleADData ble_data;
-    if (!ble_ad_data(payload_buffer, msg_counter, &ble_data)) {
+    if (!ble_5_0_ad_data(payload_buffer, msg_counter, &ble_data)) {
         return false;
     }
 
     esp_err_t ret = esp_ble_gap_config_ext_adv_data_raw(adv_handle, ble_data.length, ble_data.data);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "更新广播数据失败: %d", ret);
+        return false;
+    }
+    return true;
+}
+
+// 将 RID Ble AD Data 通过 BLE 5.0 扩展广播发送
+bool ble_5_0_ad_send(uint8_t adv_handle, RIDBleADData *ble_data)
+{
+    if (!ble_data) {
+        return false;
+    }
+
+    esp_err_t ret = esp_ble_gap_config_ext_adv_data_raw(adv_handle, ble_data->length, ble_data->data);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "更新广播数据失败: %d", ret);
         return false;

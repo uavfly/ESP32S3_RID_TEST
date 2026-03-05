@@ -122,6 +122,7 @@ typedef struct {
     uint8_t length; // 实际有效长度
 } RIDPayloadBuffer;
 
+// RID完整打包数据类型
 typedef struct {
     RIDBasicPacket basic;
     RIDPosVecPacket pos_vec;
@@ -178,7 +179,7 @@ bool RIDPacketNano(const RIDBasicPacket *basic, const RIDPosVecPacket *posVec,
  */
 bool RIDPacket(const RIDBasicPacket *basic, const RIDPosVecPacket *posVec, const RIDRDPacket *rd,
                const RIDSYSPacket *sys, RIDPayloadBuffer *payloadbuff);
-
-void RIDContextInitDefaults(RIDContext *ctx);
-void RIDContextUpdatePosition(RIDContext *ctx, int32_t lat_1e7, int32_t lon_1e7, int16_t alt_agl, uint16_t ts_tenths);
-bool RIDContextBuildPayload(const RIDContext *ctx, RIDPayloadBuffer *payloadbuff);
+// RID数据初始化
+void RID_DATA_INIT(RIDBasicPacket *basic, RIDPosVecPacket *posVec, RIDRDPacket *rd, RIDSYSPacket *sys, const char *uasid, const char *description);
+// RID数据更新
+void RID_DATA_UPDATE(RIDPosVecPacket *posVec, RIDSYSPacket *sys, int32_t lat_1e7, int32_t lon_1e7, int16_t alt_agl, uint16_t ts_tenths);

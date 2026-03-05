@@ -4,8 +4,10 @@
 #include "esp_bt_main.h"
 #include "esp_err.h"
 
+// 蓝牙扩展广播实例句柄（Advertising Handle）
 static const uint8_t EXT_ADV_HANDLE = 0;
 
+// BLE 5.0 扩展广播参数配置
 static const esp_ble_gap_ext_adv_params_t ext_adv_params = {
     .type            = ESP_BLE_GAP_SET_EXT_ADV_PROP_NONCONN_NONSCANNABLE_UNDIRECTED,
     .interval_min    = 0x0140,
@@ -21,6 +23,7 @@ static const esp_ble_gap_ext_adv_params_t ext_adv_params = {
     .scan_req_notif  = false,
 };
 
+// BLE 栈初始化，注册 GAP 回调函数
 void ble_stack_init(esp_gap_ble_cb_t gap_cb)
 {
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
@@ -35,11 +38,13 @@ void ble_stack_init(esp_gap_ble_cb_t gap_cb)
     ESP_ERROR_CHECK(esp_ble_gap_register_callback(gap_cb));
 }
 
+// 获取 BLE 扩展广播实例句柄
 uint8_t ble_get_ext_adv_handle(void)
 {
     return EXT_ADV_HANDLE;
 }
 
+// 获取 BLE 扩展广播参数配置
 const esp_ble_gap_ext_adv_params_t *ble_get_ext_adv_params(void)
 {
     return &ext_adv_params;

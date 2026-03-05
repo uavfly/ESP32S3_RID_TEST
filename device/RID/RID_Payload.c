@@ -212,70 +212,67 @@ bool RIDPacket(const RIDBasicPacket *basic, const RIDPosVecPacket *posVec, const
     return true;
 }
 
-void RIDContextInitDefaults(RIDContext *ctx)
+// RID数据初始化
+void RID_DATA_INIT(RIDBasicPacket *basic, RIDPosVecPacket *posVec, RIDRDPacket *rd, RIDSYSPacket *sys, const char *uasid, const char *description)
 {
-    if (!ctx) {
-        return;
+    if (basic) {
+        basic->UA_Type = 2;
+        basic->ID_Type = 1;
+        RIDUasIDSerialize(uasid, basic);
     }
-
-    memset(ctx, 0, sizeof(*ctx));
-
-    ctx->basic.UA_Type = 2;
-    ctx->basic.ID_Type = 1;
-    RIDUasIDSerialize("TEST_UASID_12345", &ctx->basic);
-
-    ctx->rd.DescriptionType = 0;
-    RIDDescription("Test RID Description", &ctx->rd);
-
-    ctx->sys.ControlStationPosType = 1;
-    ctx->sys.RegionCode = 2;
-    ctx->sys.CoordType = 0;
-    ctx->sys.ControlStationLatitude = 350000000;
-    ctx->sys.ControlStationLongitude = 1100000000;
-    ctx->sys.AreaCount = 0;
-    ctx->sys.AreaRadius = 0;
-    ctx->sys.AreaAltitudeUpper = 0;
-    ctx->sys.AreaAltitudeLower = 0;
-    ctx->sys.UARunCategory = 1;
-    ctx->sys.UARunLevel = 0;
-    ctx->sys.ControlStationAltitude = 0;
-    ctx->sys.Timestamp = 0;
-    ctx->sys.reserved = 0;
-
-    RIDContextUpdatePosition(ctx, 300000000, 1200000000, 80, 0);
+    if (rd) {
+        rd->DescriptionType = 0;
+        RIDDescription(description, rd);
+    }
+    if (sys) {
+        sys->ControlStationPosType = 1;
+        sys->RegionCode = 2;
+        sys->CoordType = 0;
+        sys->ControlStationLatitude = 350000000;
+        sys->ControlStationLongitude = 1100000000;
+        sys->AreaCount = 0;
+        sys->AreaRadius = 0;
+        sys->AreaAltitudeUpper = 0;
+        sys->AreaAltitudeLower = 0;
+        sys->UARunCategory = 1;
+        sys->UARunLevel = 0;
+        sys->ControlStationAltitude = 0;
+        sys->Timestamp = 0;
+        sys->reserved = 0;
+    }
 }
 
-void RIDContextUpdatePosition(RIDContext *ctx, int32_t lat_1e7, int32_t lon_1e7, int16_t alt_agl, uint16_t ts_tenths)
+// RID数据更新
+void RID_DATA_UPDATE(RIDPosVecPacket *posVec, RIDSYSPacket *sys, int32_t lat_1e7, int32_t lon_1e7, int16_t alt_agl, uint16_t ts_tenths)
 {
-    if (!ctx) {
-        return;
+
+    if (posVec) {
+        posVec->OperationalStatus = 2;
+        posVec->AltitudeType = 0;
+        posVec->TrackAngleEW = 0;
+        posVec->SpeedMultiplier = 0;
+        posVec->TrackAngle = 0;
+        posVec->GroundSpeed = 0;
+        posVec->VerticalSpeed = 0;
+        posVec->Latitude = lat_1e7;
+        posVec->Longitude = lon_1e7;
+        posVec->AltitudeAGL = alt_agl;
+        posVec->PressureAltitude = 0;
+        posVec->GeometricAltitude = 0;
+        posVec->Accuracy = 0;
+        posVec->SpeedAccuracy = 0;
+        posVec->Timestamp = ts_tenths;
+        posVec->TimestampAccuracy = 0;
+        posVec->reserved = 0;
     }
-
-    ctx->pos_vec.OperationalStatus = 2;
-    ctx->pos_vec.AltitudeType = 0;
-    ctx->pos_vec.TrackAngleEW = 0;
-    ctx->pos_vec.SpeedMultiplier = 0;
-    ctx->pos_vec.TrackAngle = 0;
-    ctx->pos_vec.GroundSpeed = 0;
-    ctx->pos_vec.VerticalSpeed = 0;
-    ctx->pos_vec.Latitude = lat_1e7;
-    ctx->pos_vec.Longitude = lon_1e7;
-    ctx->pos_vec.AltitudeAGL = alt_agl;
-    ctx->pos_vec.PressureAltitude = 0;
-    ctx->pos_vec.GeometricAltitude = 0;
-    ctx->pos_vec.Accuracy = 0;
-    ctx->pos_vec.SpeedAccuracy = 0;
-    ctx->pos_vec.Timestamp = ts_tenths;
-    ctx->pos_vec.TimestampAccuracy = 0;
-    ctx->pos_vec.reserved = 0;
-
-    ctx->sys.Timestamp = ts_tenths / 10;
-}
-
-bool RIDContextBuildPayload(const RIDContext *ctx, RIDPayloadBuffer *payloadbuff)
-{
-    if (!ctx || !payloadbuff) {
-        return false;
+    if (sys) {
+         sys->ControlStationLatitude = 350000000;
+        sys->ControlStationLongitude = 1100000000;
+        sys->AreaCount = 0;
+        sys->AreaRadius = 0;
+        sys->AreaAltitudeUpper = 0;
+        sys->AreaAltitudeLower = 0;
+        sys->ControlStationAltitude = 0;
+        sys->Timestamp = ts_tenths / 10; // 更新系统报文中的时间戳为秒级
     }
-    return RIDPacket(&ctx->basic, &ctx->pos_vec, &ctx->rd, &ctx->sys, payloadbuff);
 }

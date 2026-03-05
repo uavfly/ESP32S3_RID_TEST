@@ -34,6 +34,7 @@ static esp_ble_gap_ext_adv_t ext_adv = {
     .max_events = 0,
 };
 
+// BLE GAP 事件处理回调
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event) {
@@ -75,6 +76,7 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
     }
 }
 
+// 设备初始化：NVS、Wi-Fi、BLE 栈、RID 上下文和初始广播数据准备
 static void device_init(void)
 {
     esp_err_t ret = nvs_flash_init();
@@ -92,8 +94,8 @@ static void device_init(void)
 
     ble_stack_init(gap_event_handler);
 
-    RIDContextInitDefaults(&rid_ctx);
-    ESP_ERROR_CHECK(RIDContextBuildPayload(&rid_ctx, &payload_buffer) ? ESP_OK : ESP_FAIL);
+    RID_DATA_INIT(&rid_ctx.basic, &rid_ctx.pos_vec, &rid_ctx.rd, &rid_ctx.sys, "RID_TEST_123","ESP32S3_RID_TEST");
+    ESP_ERROR_CHECK(RIDPacket(&rid_ctx.basic, &rid_ctx.pos_vec, &rid_ctx.rd, &rid_ctx.sys, &payload_buffer) ? ESP_OK : ESP_FAIL);
 
     memset(&beacon_packet, 0, sizeof(beacon_packet));
     ESP_ERROR_CHECK(wifi_update_beacon_ie(&beacon_packet, &payload_buffer) ? ESP_OK : ESP_FAIL);
@@ -107,6 +109,7 @@ void app_main(void)
 
     ESP_ERROR_CHECK(esp_ble_gap_ext_adv_set_params(ble_get_ext_adv_handle(), ble_get_ext_adv_params()));
 
+    // 等待 BLE 广播启动完成
     while (!adv_started) {
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -117,8 +120,8 @@ void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(200));
         tick = (tick + 2) % 36000;
 
-        RIDContextUpdatePosition(&rid_ctx, 300000000, 1200000000, 80, tick);
-        if (!RIDContextBuildPayload(&rid_ctx, &payload_buffer)) {
+        RID_DATA_UPDATE(&rid_ctx.pos_vec, &rid_ctx.sys, 300000000, 1200000000, 80, tick);
+        if (!RIDPacket(&rid_ctx.basic, &rid_ctx.pos_vec, &rid_ctx.rd, &rid_ctx.sys, &payload_buffer)) {
             ESP_LOGE(TAG, "RID payload 打包失败");
             continue;
         }

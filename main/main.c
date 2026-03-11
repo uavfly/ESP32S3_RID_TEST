@@ -129,6 +129,10 @@ void app_main(void)
         if (!ble_5_0_payload_send(ble_get_ext_adv_handle(), &payload_buffer, &msg_counter)) {
             ESP_LOGE(TAG, "BLE payload 更新失败");
         }
+        if(!ble_5_0_payload_send_step(ble_get_ext_adv_handle(), &rid_ctx.basic, &rid_ctx.pos_vec, &rid_ctx.rd, &rid_ctx.sys, &msg_counter)) {
+            ESP_LOGE(TAG, "BLE 分体 payload 更新失败");
+        }
+
 
         sec_div++;
         if (sec_div >= 5) {

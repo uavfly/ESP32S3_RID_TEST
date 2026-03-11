@@ -19,7 +19,7 @@ bool ble_5_0_ad_data_loc(const RIDSubframePayloadBuffer *rid_loc, uint8_t *msg_c
 bool ble_5_0_ad_data_rd(const RIDSubframePayloadBuffer *rid_rd, uint8_t *msg_counter, RIDBleADData *ble_data);
 bool ble_5_0_ad_data_sys(const RIDSubframePayloadBuffer *rid_sys, uint8_t *msg_counter, RIDBleADData *ble_data);
 
-bool ble_5_0_payload_send_step(uint8_t adv_handle, const RIDSubframePayloadBuffer *rid_basic, const RIDSubframePayloadBuffer *rid_loc, const RIDSubframePayloadBuffer *rid_rd, const RIDSubframePayloadBuffer *rid_sys, uint8_t *msg_counter);
+bool ble_5_0_payload_send_step(uint8_t adv_handle, const RIDBasicPacket *rid_basic, const RIDPosVecPacket *rid_pv, const RIDRDPacket *rid_rd, const RIDSYSPacket *rid_sys, uint8_t *msg_counter);
 // 将 RIDPayloadBuffer 通过 BLE 5.0 扩展广播发送
 bool ble_5_0_payload_send(uint8_t adv_handle, const RIDPayloadBuffer *payload_buffer, uint8_t *msg_counter);
 // 将 RID Ble AD Data 通过 BLE 5.0 扩展广播发送

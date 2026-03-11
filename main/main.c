@@ -86,11 +86,11 @@ static void device_init(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    wifi_raw_tx_init();
-    ESP_ERROR_CHECK(esp_wifi_get_mac(WIFI_IF_AP, wifi_mac));
+    //wifi_raw_tx_init();
+    //ESP_ERROR_CHECK(esp_wifi_get_mac(WIFI_IF_AP, wifi_mac));
 
-    wifi_nan_build_template(&nan_packet);
-    wifi_nan_set_source_mac(&nan_packet, wifi_mac);
+    //wifi_nan_build_template(&nan_packet);
+    //wifi_nan_set_source_mac(&nan_packet, wifi_mac);
 
     ble_stack_init(gap_event_handler);
 
@@ -98,7 +98,7 @@ static void device_init(void)
     ESP_ERROR_CHECK(RIDPacket(&rid_ctx.basic, &rid_ctx.pos_vec, &rid_ctx.rd, &rid_ctx.sys, &payload_buffer) ? ESP_OK : ESP_FAIL);
 
     memset(&beacon_packet, 0, sizeof(beacon_packet));
-    ESP_ERROR_CHECK(wifi_update_beacon_ie(&beacon_packet, &payload_buffer) ? ESP_OK : ESP_FAIL);
+    //ESP_ERROR_CHECK(wifi_update_beacon_ie(&beacon_packet, &payload_buffer) ? ESP_OK : ESP_FAIL);
 
     ESP_LOGI(TAG, "设备初始化完成");
 }
@@ -126,9 +126,10 @@ void app_main(void)
             continue;
         }
 
-        if (!ble_5_0_payload_send(ble_get_ext_adv_handle(), &payload_buffer, &msg_counter)) {
+       /*  if (!ble_5_0_payload_send(ble_get_ext_adv_handle(), &payload_buffer, &msg_counter)) {
             ESP_LOGE(TAG, "BLE payload 更新失败");
-        }
+        } */
+
         if(!ble_5_0_payload_send_step(ble_get_ext_adv_handle(), &rid_ctx.basic, &rid_ctx.pos_vec, &rid_ctx.rd, &rid_ctx.sys, &msg_counter)) {
             ESP_LOGE(TAG, "BLE 分体 payload 更新失败");
         }
@@ -137,14 +138,14 @@ void app_main(void)
         sec_div++;
         if (sec_div >= 5) {
             sec_div = 0;
-            if (!wifi_update_beacon_ie(&beacon_packet, &payload_buffer)) {
+            /* if (!wifi_update_beacon_ie(&beacon_packet, &payload_buffer)) {
                 ESP_LOGE(TAG, "Beacon IE 更新失败");
             }
-
-            for (int i = 0; i < 10; i++) {
+ */
+            /* for (int i = 0; i < 10; i++) {
                 wifi_send_nan_frame(&nan_packet);
                 vTaskDelay(pdMS_TO_TICKS(5));
-            }
+            } */
             ESP_LOGI(TAG, "RID 广播已更新 tick=%u", tick);
         }
     }

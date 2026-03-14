@@ -180,7 +180,7 @@ bool RIDPacketNano(const RIDBasicPacket *basic, const RIDPosVecPacket *posVec,
  * @return true    打包成功
  * @return false   参数无效
  */
-bool RIDPacket(const RIDBasicPacket *basic, const RIDPosVecPacket *posVec, const RIDRDPacket *rd,
+/* bool RIDPacket(const RIDBasicPacket *basic, const RIDPosVecPacket *posVec, const RIDRDPacket *rd,
                const RIDSYSPacket *sys, RIDPayloadBuffer *payloadbuff)
 {
     if (!basic || !posVec || !rd || !sys || !payloadbuff) {
@@ -210,7 +210,7 @@ bool RIDPacket(const RIDBasicPacket *basic, const RIDPosVecPacket *posVec, const
         return false;
     }
     return true;
-}
+} */
 
 // RID数据初始化
 void RID_DATA_INIT(RIDBasicPacket *basic, RIDPosVecPacket *posVec, RIDRDPacket *rd, RIDSYSPacket *sys, const char *uasid, const char *description)

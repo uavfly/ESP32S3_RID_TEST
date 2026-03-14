@@ -52,7 +52,7 @@ bool ble_5_0_ad_data_basic(const RIDSubframePayloadBuffer *rid_basic, uint8_t *m
     ble_data->data[4] = 0x0D;       // App Code
     ble_data->data[5] = *msg_counter;
     (*msg_counter)++;
-    memcpy(&ble_data->data[6], rid_basic->RIDSubframePayloadBuffer, 25);
+    memcpy(&ble_data->data[6], rid_basic->buffer, 25);
     ble_data->length = 1 + ad_payload_len; // 31
     return true;
 }
@@ -73,7 +73,7 @@ bool ble_5_0_ad_data_loc(const RIDSubframePayloadBuffer *rid_loc, uint8_t *msg_c
     ble_data->data[4] = 0x0D;       // App Code
     ble_data->data[5] = *msg_counter;
     (*msg_counter)++;
-    memcpy(&ble_data->data[6], rid_loc->RIDSubframePayloadBuffer, 25);
+    memcpy(&ble_data->data[6], rid_loc->buffer, 25);
     ble_data->length = 1 + ad_payload_len; // 31
     return true;
 }
@@ -94,7 +94,7 @@ bool ble_5_0_ad_data_rd(const RIDSubframePayloadBuffer *rid_rd, uint8_t *msg_cou
     ble_data->data[4] = 0x0D;       // App Code
     ble_data->data[5] = *msg_counter;
     (*msg_counter)++;
-    memcpy(&ble_data->data[6], rid_rd->RIDSubframePayloadBuffer, 25);
+    memcpy(&ble_data->data[6], rid_rd->buffer, 25);
     ble_data->length = 1 + ad_payload_len; // 31
     return true;
 }
@@ -115,7 +115,7 @@ bool ble_5_0_ad_data_sys(const RIDSubframePayloadBuffer *rid_sys, uint8_t *msg_c
     ble_data->data[4] = 0x0D;       // App Code
     ble_data->data[5] = *msg_counter;
     (*msg_counter)++;
-    memcpy(&ble_data->data[6], rid_sys->RIDSubframePayloadBuffer, 25);
+    memcpy(&ble_data->data[6], rid_sys->buffer, 25);
     ble_data->length = 1 + ad_payload_len; // 31
     return true;
 }

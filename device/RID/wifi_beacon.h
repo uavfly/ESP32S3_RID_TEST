@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "RID_Payload.h"
+#include "RID_Payload.hpp"
 
 // Wi-Fi Beacon 广播数据结构
 typedef struct {

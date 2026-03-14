@@ -4,9 +4,9 @@ idf_component_register(
         "../device/ble/ble.c"
         "../device/wifi/wifi.c"
         "../device/RID/RID_Payload.cpp"
-        "../device/RID/ble50.c"
-        "../device/RID/wifi_beacon.c"
-        "../device/RID/wifi_nan.c"
+        "../device/RID/ble50.cpp"
+        "../device/RID/wifi_beacon.cpp"
+        "../device/RID/wifi_nan.cpp"
     INCLUDE_DIRS
         "."
         "../device/ble"

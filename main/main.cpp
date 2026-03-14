@@ -20,7 +20,7 @@
 
 #define TAG "RID_APP"
 
-static RIDContext rid_ctx;
+static RID_Data rid_data;
 static RIDPayloadBuffer payload_buffer;
 static WiFi_NAN_packet nan_packet;
 static WiFi_Beacon_packet beacon_packet;
@@ -94,8 +94,30 @@ static void device_init(void)
 
     ble_stack_init(gap_event_handler);
 
-    RID_DATA_INIT(&rid_ctx.basic, &rid_ctx.pos_vec, &rid_ctx.rd, &rid_ctx.sys, "RID_TEST_123","ESP32S3_RID_TEST");
-    ESP_ERROR_CHECK(RIDPacket(&rid_ctx.basic, &rid_ctx.pos_vec, &rid_ctx.rd, &rid_ctx.sys, &payload_buffer) ? ESP_OK : ESP_FAIL);
+    // 初始化基本ID报文
+    rid_data.basic.UA_Type = 2;
+    rid_data.basic.ID_Type = 1;
+    RIDUasIDSerialize("RID_TEST_123", &rid_data.basic);
+    rid_data.basic_en = true;
+
+    // 初始化运行描述报文
+    rid_data.rd.DescriptionType = 0;
+    RIDDescription("ESP32S3_RID_TEST", &rid_data.rd);
+    rid_data.rd_en = true;
+
+    // 初始化系统报文（静态字段）
+    rid_data.sys.ControlStationPosType = 1;
+    rid_data.sys.RegionCode = 2;
+    rid_data.sys.CoordType = 0;
+    rid_data.sys.ControlStationLatitude = 350000000;
+    rid_data.sys.ControlStationLongitude = 1100000000;
+    rid_data.sys.UARunCategory = 1;
+    rid_data.sys.UARunLevel = 0;
+    rid_data.sys_en = true;
+
+    // 生成初始 payload
+    RIDPayload payload = rid_data.get_payload();
+    ESP_ERROR_CHECK(RIDPayloadSerialize(&payload, &payload_buffer) ? ESP_OK : ESP_FAIL);
 
     memset(&beacon_packet, 0, sizeof(beacon_packet));
     //ESP_ERROR_CHECK(wifi_update_beacon_ie(&beacon_packet, &payload_buffer) ? ESP_OK : ESP_FAIL);
@@ -103,7 +125,7 @@ static void device_init(void)
     ESP_LOGI(TAG, "设备初始化完成");
 }
 
-void app_main(void)
+extern "C" void app_main(void)
 {
     device_init();
 
@@ -120,20 +142,23 @@ void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(200));
         tick = (tick + 2) % 36000;
 
-        RID_DATA_UPDATE(&rid_ctx.pos_vec, &rid_ctx.sys, 300000000, 1200000000, 80, tick);
-        if (!RIDPacket(&rid_ctx.basic, &rid_ctx.pos_vec, &rid_ctx.rd, &rid_ctx.sys, &payload_buffer)) {
-            ESP_LOGE(TAG, "RID payload 打包失败");
-            continue;
-        }
+        // 更新位置向量报文
+        rid_data.pos_vec.OperationalStatus = 2;
+        rid_data.pos_vec.Latitude = 300000000;
+        rid_data.pos_vec.Longitude = 1200000000;
+        rid_data.pos_vec.AltitudeAGL = 80;
+        rid_data.pos_vec.Timestamp = tick;
+        rid_data.pos_vec_en = true;
 
-       /*  if (!ble_5_0_payload_send(ble_get_ext_adv_handle(), &payload_buffer, &msg_counter)) {
-            ESP_LOGE(TAG, "BLE payload 更新失败");
-        } */
+        // 更新系统报文动态字段
+        rid_data.sys.ControlStationLatitude = 350000000;
+        rid_data.sys.ControlStationLongitude = 1100000000;
+        rid_data.sys.Timestamp = tick / 10;
 
-        if(!ble_5_0_payload_send_step(ble_get_ext_adv_handle(), &rid_ctx.basic, &rid_ctx.pos_vec, &rid_ctx.rd, &rid_ctx.sys, &msg_counter)) {
+        // BLE 分体发送
+        if(!ble_5_0_payload_send_step(ble_get_ext_adv_handle(), &rid_data.basic, &rid_data.pos_vec, &rid_data.rd, &rid_data.sys, &msg_counter)) {
             ESP_LOGE(TAG, "BLE 分体 payload 更新失败");
         }
-
 
         sec_div++;
         if (sec_div >= 5) {

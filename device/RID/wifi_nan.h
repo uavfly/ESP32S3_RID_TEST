@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "RID_Payload.h"
+#include "RID_Payload.hpp"
 
 // NAN 帧头长度: MAC(24) + Category(1) + Action(1) + OUI(3) + OUI_Type(1) = 30
 #define WIFI_NAN_HDR_LEN  30

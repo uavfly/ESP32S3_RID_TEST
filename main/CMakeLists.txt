@@ -1,9 +1,9 @@
 idf_component_register(
     SRCS
-        "main.c"
+        "main.cpp"
         "../device/ble/ble.c"
         "../device/wifi/wifi.c"
-        "../device/RID/RID_Payload.c"
+        "../device/RID/RID_Payload.cpp"
         "../device/RID/ble50.c"
         "../device/RID/wifi_beacon.c"
         "../device/RID/wifi_nan.c"

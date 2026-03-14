@@ -1,4 +1,4 @@
-#include "RID_Payload.h"
+#include "RID_Payload.hpp"
 
 // UASID字符串序列化
 void RIDUasIDSerialize(const char *str, RIDBasicPacket *packet)

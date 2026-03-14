@@ -71,6 +71,21 @@ typedef struct {
     uint8_t reserved;      // 预留
 } RIDPosVecPacket;
 
+// RID认证报文数据类型
+typedef struct {
+    union {
+        uint8_t AuthType_DataPage;  // 原始字节（用于直接赋值或序列化）
+        struct {
+            uint8_t DataPage : 4;   // Bit[3:0]：数据页编号（0~15）
+            uint8_t AuthType : 4;   // Bit[7:4]：认证类型（0=无，1~4=定义值，5~15=预留）
+        };
+    };
+    uint8_t LastPageIndex;          // 最后一页索引（仅Page 0有意义）
+    uint8_t Length;                  // 认证数据总长度（仅Page 0有意义）
+    uint32_t Timestamp;             // 认证时间戳，基准2019-01-01 00:00:00，uint32，秒（仅Page 0有意义）
+    uint8_t AuthData[17];           // 认证数据（Page 0为17字节；Page 1+需使用从LastPageIndex起的完整23字节区域）
+} RIDAuthPacket;
+
 // RID运行描述报文数据类型
 typedef struct {
     uint8_t DescriptionType;    // 描述类型，0=文字描述，1~200=预留，201~255=私人使用
@@ -108,6 +123,13 @@ typedef struct {
     uint8_t reserved;                // 预留
 } RIDSYSPacket;
 
+// RID操作者ID报文数据类型
+typedef struct {
+    uint8_t OperatorIDType;         // 操作者ID类型（0=CAA注册ID，1~200=预留，201~255=私有使用）
+    uint8_t OperatorID[20];         // 操作者ID（ASCII字符串，20字节）
+    uint8_t reserved[3];            // 预留
+} RIDOperatorIDPacket;
+
 // RID Payload 数据类型
 typedef struct {
     uint8_t Header;          // 打包报文报头，固定值0xF1（类型0xF | 版本0x1）
@@ -128,7 +150,158 @@ typedef struct {
     RIDPosVecPacket pos_vec;
     RIDRDPacket rd;
     RIDSYSPacket sys;
-} RIDContext;
+    RIDOperatorIDPacket operator_id;
+    RIDAuthPacket auth;
+    bool basic_en;
+    bool pos_vec_en;
+    bool rd_en;
+    bool sys_en;
+    bool op_id_en;
+    bool auth_en;
+} RIDpacket;
+
+// 总消息负载序列化数据类型
+typedef struct {
+    uint8_t basic[25];
+    uint8_t pos_vec[25];
+    uint8_t rd[25];
+    uint8_t sys[25];
+    uint8_t operator_id[25];
+    uint8_t auth[25];
+    uint8_t data[256];
+    uint8_t size;
+    bool basic_en;
+    bool pos_vec_en;
+    bool rd_en;
+    bool sys_en;
+    bool op_id_en;
+    bool auth_en;
+} RIDpacketSerialized;
+
+class RID_Data{
+public:
+    
+    // 子帧数据引用（简化访问，如 RID_Data.basic 等价于 RID_Data.data.basic）
+    RIDBasicPacket       &basic;
+    RIDPosVecPacket      &pos_vec;
+    RIDRDPacket          &rd;
+    RIDSYSPacket         &sys;
+    RIDOperatorIDPacket  &operator_id;
+    RIDAuthPacket        &auth;
+
+    // 使能标志引用
+    bool &basic_en;
+    bool &pos_vec_en;
+    bool &rd_en;
+    bool &sys_en;
+    bool &op_id_en;
+    bool &auth_en;
+
+    // 构造函数：绑定引用到 data 内部成员
+    RID_Data()
+        : basic(data.basic)
+        , pos_vec(data.pos_vec)
+        , rd(data.rd)
+        , sys(data.sys)
+        , operator_id(data.operator_id)
+        , auth(data.auth)
+        , basic_en(data.basic_en)
+        , pos_vec_en(data.pos_vec_en)
+        , rd_en(data.rd_en)
+        , sys_en(data.sys_en)
+        , op_id_en(data.op_id_en)
+        , auth_en(data.auth_en)
+    {
+        // 初始化数据
+        this->init();
+    }
+
+    // 初始化数据
+    void init(){
+        memset(&data, 0, sizeof(RIDpacket));
+    }
+    // 初始化数据填充(填充静态数据)
+    void setup(const RIDpacket &packet){
+        if(packet.basic_en){
+            this->data.basic = packet.basic;
+            this->data.basic_en = true;
+        }
+        if(packet.rd_en){
+            this->data.rd = packet.rd;
+            this->data.rd_en = true;
+        }
+        if(packet.op_id_en){
+            this->data.operator_id = packet.operator_id;
+            this->data.op_id_en = true;
+        }
+        if(packet.auth_en){
+            this->data.auth = packet.auth;
+            this->data.auth_en = true;
+        }
+        if(packet.sys_en){
+            this->data.sys.Tag = packet.sys.Tag;
+            this->data.sys.UARunCategory_Level = packet.sys.UARunCategory_Level;
+            this->data.sys.AreaRadius = packet.sys.AreaRadius;
+            this->data.sys.AreaAltitudeUpper = packet.sys.AreaAltitudeUpper;
+            this->data.sys.AreaAltitudeLower = packet.sys.AreaAltitudeLower;
+            this->data.sys.AreaCount = packet.sys.AreaCount;
+            this->data.sys_en = true;
+        }
+    }
+    // 清空数据
+    void clean(){
+        this->init();
+    }
+    // 更新数据
+    void update_basic(const RIDBasicPacket &basic){
+        this->data.basic = basic;
+        this->basic_en = true;
+    }
+    void update_pos_vec(const RIDPosVecPacket &pos_vec){
+        this->data.pos_vec = pos_vec;
+        this->pos_vec_en = true;
+    }
+    void update_rd(const RIDRDPacket &rd){
+        this->data.rd = rd;
+        this->rd_en = true;
+    }
+    void update_sys(const RIDSYSPacket &sys){
+        this->data.sys = sys;
+        this->sys_en = true;
+    }
+    void update_operator_id(const RIDOperatorIDPacket &operator_id){
+        this->data.operator_id = operator_id;
+        this->op_id_en = true;
+    }
+    void update_auth(const RIDAuthPacket &auth){
+        this->data.auth = auth;
+        this->auth_en = true;
+    }
+    void update(const RIDpacket &packet){
+        if(packet.basic_en){
+            this->update_basic(packet.basic);
+        }
+        if(packet.pos_vec_en){
+            this->update_pos_vec(packet.pos_vec);
+        }
+        if(packet.rd_en){
+            this->update_rd(packet.rd);
+        }
+        if(packet.sys_en){
+            this->update_sys(packet.sys);
+        }
+        if(packet.op_id_en){
+            this->update_operator_id(packet.operator_id);
+        }
+        if(packet.auth_en){
+            this->update_auth(packet.auth);
+        }
+    }
+    // 序列化数据
+private:
+    // 负载数据
+    RIDpacket data;
+};
 
 // UASID 字符串序列化（写入 packet->UASID，不足补零，超出截断）
 void RIDUasIDSerialize(const char *str, RIDBasicPacket *packet);

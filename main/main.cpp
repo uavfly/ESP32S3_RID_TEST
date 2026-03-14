@@ -13,7 +13,7 @@
 
 #include "ble.h"
 #include "wifi.h"
-#include "RID_Payload.h"
+#include "RID_Payload.hpp"
 #include "ble50.h"
 #include "wifi_beacon.h"
 #include "wifi_nan.h"

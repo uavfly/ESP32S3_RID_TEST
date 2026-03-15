@@ -149,7 +149,7 @@ bool ble_5_0_payload_send_step(uint8_t adv_handle, const RIDBasicPacket *rid_bas
         }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(50));
     
     if (rid_pv) {
         RIDBleADData ble_data;
@@ -161,7 +161,7 @@ bool ble_5_0_payload_send_step(uint8_t adv_handle, const RIDBasicPacket *rid_bas
         }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(50));
 
     if (rid_rd) {
         RIDBleADData ble_data;
@@ -173,7 +173,7 @@ bool ble_5_0_payload_send_step(uint8_t adv_handle, const RIDBasicPacket *rid_bas
         }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(50));
 
     if (rid_sys) {
         RIDBleADData ble_data;
@@ -185,7 +185,7 @@ bool ble_5_0_payload_send_step(uint8_t adv_handle, const RIDBasicPacket *rid_bas
         }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(50));
 
     return true;
 }

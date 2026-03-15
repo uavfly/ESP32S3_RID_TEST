@@ -17,6 +17,7 @@
 #include "ble50.h"
 #include "wifi_beacon.h"
 #include "wifi_nan.h"
+#include "TimeBase.h"
 
 #define TAG "RID_APP"
 
@@ -52,6 +53,8 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
         if (param->ext_adv_data_set.status != ESP_BT_STATUS_SUCCESS) {
             ESP_LOGE(TAG, "设置广播数据失败: %d", param->ext_adv_data_set.status);
             break;
+        }else{
+            ESP_LOGI(TAG, "BLE 广播数据成功，时间：%u", xTaskGetTickCount());
         }
         if (!adv_started) {
             ESP_ERROR_CHECK(esp_ble_gap_ext_adv_start(1, &ext_adv));
@@ -154,6 +157,13 @@ extern "C" void app_main(void)
         rid_data.sys.ControlStationLatitude = 350000000;
         rid_data.sys.ControlStationLongitude = 1100000000;
         rid_data.sys.Timestamp = tick / 10;
+
+        if(ble_5_0_payload_send(ble_get_ext_adv_handle(), &payload_buffer, &msg_counter)) {
+            ESP_LOGI(TAG, "BLE 广播数据已更新，tick=%u", tick);
+        }
+
+
+        vTaskDelay(pdMS_TO_TICKS(50));
 
         // BLE 分体发送
         if(!ble_5_0_payload_send_step(ble_get_ext_adv_handle(), &rid_data.basic, &rid_data.pos_vec, &rid_data.rd, &rid_data.sys, &msg_counter)) {

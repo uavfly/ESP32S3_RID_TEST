@@ -9,6 +9,7 @@ idf_component_register(
         "../device/RID/wifi_nan.cpp"
     INCLUDE_DIRS
         "."
+        "../include"
         "../device/ble"
         "../device/wifi"
         "../device/RID"

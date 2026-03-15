@@ -12,5 +12,5 @@ typedef struct {
 } WiFi_Beacon_packet;
 
 // 将最新 RID payload 更新到 AP Beacon 的 Vendor-Specific IE
-bool wifi_update_beacon_ie(WiFi_Beacon_packet *beacon_packet, const RIDPayloadBuffer *payload_buffer);
+bool wifi_update_beacon_ie(WiFi_Beacon_packet *beacon_packet, RID_Data *rid_data);
 

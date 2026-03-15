@@ -22,7 +22,6 @@
 #define TAG "RID_APP"
 
 static RID_Data rid_data;
-static RIDPayloadBuffer payload_buffer;
 static WiFi_NAN_packet nan_packet;
 static WiFi_Beacon_packet beacon_packet;
 static uint8_t wifi_mac[6];
@@ -44,7 +43,7 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
             ESP_LOGE(TAG, "设置广播参数失败: %d", param->ext_adv_set_params.status);
             break;
         }
-        if (!ble_5_0_payload_send(ble_get_ext_adv_handle(), &payload_buffer, &msg_counter)) {
+        if (!ble_5_0_payload_send(ble_get_ext_adv_handle(), &rid_data, &msg_counter)) {
             ESP_LOGE(TAG, "初始 BLE 广播数据下发失败");
         }
         break;
@@ -54,11 +53,10 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
             ESP_LOGE(TAG, "设置广播数据失败: %d", param->ext_adv_data_set.status);
             break;
         }else{
-            ESP_LOGI(TAG, "BLE 广播数据成功，时间：%u", xTaskGetTickCount());
+            ESP_LOGI(TAG, "BLE 广播数据成功，准备进入 TDM 循环");
         }
-        if (!adv_started) {
-            ESP_ERROR_CHECK(esp_ble_gap_ext_adv_start(1, &ext_adv));
-        }
+        // 不在这里自动启动，交由主循环进行 TDM 时序控制启动
+        adv_started = true;
         break;
 
     case ESP_GAP_BLE_EXT_ADV_START_COMPLETE_EVT:
@@ -89,11 +87,11 @@ static void device_init(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    //wifi_raw_tx_init();
-    //ESP_ERROR_CHECK(esp_wifi_get_mac(WIFI_IF_AP, wifi_mac));
+    wifi_raw_tx_init();
+    ESP_ERROR_CHECK(esp_wifi_get_mac(WIFI_IF_AP, wifi_mac));
 
-    //wifi_nan_build_template(&nan_packet);
-    //wifi_nan_set_source_mac(&nan_packet, wifi_mac);
+    wifi_nan_build_template(&nan_packet);
+    wifi_nan_set_source_mac(&nan_packet, wifi_mac);
 
     ble_stack_init(gap_event_handler);
 
@@ -118,12 +116,8 @@ static void device_init(void)
     rid_data.sys.UARunLevel = 0;
     rid_data.sys_en = true;
 
-    // 生成初始 payload
-    RIDPayload payload = rid_data.get_payload();
-    ESP_ERROR_CHECK(RIDPayloadSerialize(&payload, &payload_buffer) ? ESP_OK : ESP_FAIL);
-
     memset(&beacon_packet, 0, sizeof(beacon_packet));
-    //ESP_ERROR_CHECK(wifi_update_beacon_ie(&beacon_packet, &payload_buffer) ? ESP_OK : ESP_FAIL);
+    //ESP_ERROR_CHECK(wifi_update_beacon_ie(&beacon_packet, &rid_data) ? ESP_OK : ESP_FAIL);
 
     ESP_LOGI(TAG, "设备初始化完成");
 }
@@ -134,17 +128,22 @@ extern "C" void app_main(void)
 
     ESP_ERROR_CHECK(esp_ble_gap_ext_adv_set_params(ble_get_ext_adv_handle(), ble_get_ext_adv_params()));
 
-    // 等待 BLE 广播启动完成
+    // 等待初始参数和数据下发完成
     while (!adv_started) {
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 
     uint16_t tick = 0;
-    uint8_t sec_div = 0;
+    const uint8_t ext_adv_inst = ext_adv.instance;
+
+    // 使用 xTaskGetTickCount 配合 vTaskDelayUntil 实现严格的绝对时基（2Hz -> 500ms 周期）
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xFrequency = pdMS_TO_TICKS(600);
+
     while (1) {
-        vTaskDelay(pdMS_TO_TICKS(200));
         tick = (tick + 2) % 36000;
 
+        // ---------- 1. 数据更新 ----------
         // 更新位置向量报文
         rid_data.pos_vec.OperationalStatus = 2;
         rid_data.pos_vec.Latitude = 300000000;
@@ -158,30 +157,47 @@ extern "C" void app_main(void)
         rid_data.sys.ControlStationLongitude = 1100000000;
         rid_data.sys.Timestamp = tick / 10;
 
-        if(ble_5_0_payload_send(ble_get_ext_adv_handle(), &payload_buffer, &msg_counter)) {
-            ESP_LOGI(TAG, "BLE 广播数据已更新，tick=%u", tick);
+
+        // ---------- 2. 严格时分复用 (TDM) 发送状态机 ----------
+        TickType_t slot_start;
+
+        // 【窗口 1: 开启蓝牙广播 (25ms)】
+        slot_start = xTaskGetTickCount();
+        esp_ble_gap_ext_adv_start(1, &ext_adv);
+        vTaskDelayUntil(&slot_start, pdMS_TO_TICKS(25));
+
+        // 【窗口 2: 发送组合报文 (50ms)】
+        slot_start = xTaskGetTickCount();
+        if(!ble_5_0_payload_send(ble_get_ext_adv_handle(), &rid_data, &msg_counter)) {
+            ESP_LOGE(TAG, "组合报文发送失败");
         }
+        vTaskDelayUntil(&slot_start, pdMS_TO_TICKS(50));
 
-
-        vTaskDelay(pdMS_TO_TICKS(50));
-
-        // BLE 分体发送
-        if(!ble_5_0_payload_send_step(ble_get_ext_adv_handle(), &rid_data.basic, &rid_data.pos_vec, &rid_data.rd, &rid_data.sys, &msg_counter)) {
-            ESP_LOGE(TAG, "BLE 分体 payload 更新失败");
+        // 【窗口 3: 发送多个单独报文 (300ms)】
+        // 注：ble_5_0_payload_send_step 内有 4 次 50ms 延时，即 200ms
+        // 使用 vTaskDelayUntil 能够精准消化掉函数执行时间和内部延时误差，凑满 300ms 窗口
+        slot_start = xTaskGetTickCount();
+        if(!ble_5_0_payload_send_step(ble_get_ext_adv_handle(), &rid_data, &msg_counter)) {
+            ESP_LOGE(TAG, "分体 payload 更新失败");
         }
+        vTaskDelayUntil(&slot_start, pdMS_TO_TICKS(400));
 
-        sec_div++;
-        if (sec_div >= 5) {
-            sec_div = 0;
-            /* if (!wifi_update_beacon_ie(&beacon_packet, &payload_buffer)) {
-                ESP_LOGE(TAG, "Beacon IE 更新失败");
-            }
- */
-            /* for (int i = 0; i < 10; i++) {
-                wifi_send_nan_frame(&nan_packet);
-                vTaskDelay(pdMS_TO_TICKS(5));
-            } */
-            ESP_LOGI(TAG, "RID 广播已更新 tick=%u", tick);
+        // 【窗口 4: 关闭蓝牙广播 (25ms)】
+        // 挂起蓝牙，防止其与 Wi-Fi NAN 帧底层硬件资源争夺
+        slot_start = xTaskGetTickCount();
+        esp_ble_gap_ext_adv_stop(1, &ext_adv_inst);
+        vTaskDelayUntil(&slot_start, pdMS_TO_TICKS(25));
+
+        // 【窗口 5: 发送NAN帧 (100ms)】
+        slot_start = xTaskGetTickCount();
+        wifi_nan_set_rid_payload(&nan_packet, &rid_data); // 更新NAN载荷
+        for (int i = 0; i < 5; i++) {
+            wifi_send_nan_frame(&nan_packet);
+            vTaskDelay(pdMS_TO_TICKS(10)); // 降速防止拥塞
         }
+        ESP_LOGI(TAG, "TDM 循环完毕，tick=%u", tick);
+
+        // 补齐 600ms，保证低频循环，给予蓝牙重开更长的空闲时间
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(600));
     }
 }

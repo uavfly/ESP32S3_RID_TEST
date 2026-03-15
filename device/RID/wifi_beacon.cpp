@@ -16,13 +16,14 @@
  * AP 以 100 TU 间隔自动发送 Beacon，每帧均携带最新 RID payload。
  * 此函数只需在 payload 更新时调用一次，硬件层面持续广播无需重复注入。
  */
-bool wifi_update_beacon_ie(WiFi_Beacon_packet *beacon_packet, const RIDPayloadBuffer *payload_buffer)
+bool wifi_update_beacon_ie(WiFi_Beacon_packet *beacon_packet, RID_Data *rid_data)
 {
-    if (!beacon_packet || !payload_buffer) {
+    if (!beacon_packet || !rid_data) {
         return false;
     }
 
-    uint8_t payload_len = payload_buffer->length;
+    RIDPayload payload_buffer = rid_data->get_payload();
+    uint8_t payload_len = payload_buffer.length();
     if (payload_len == 0) return false;
     if (payload_len > 250) {
         ESP_LOGE(TAG, "RID payload 长度非法: %u", payload_len);
@@ -36,7 +37,7 @@ bool wifi_update_beacon_ie(WiFi_Beacon_packet *beacon_packet, const RIDPayloadBu
     beacon_packet->buf[4] = 0xBC;                        // ASTM OUI byte 2
     beacon_packet->buf[5] = 0x0D;                        // OUI Type: Open Drone ID Remote ID
     beacon_packet->buf[6] = 0x0D;                        // App Code: Open Drone ID (ASTM F3411-22a 12.5.2)
-    memcpy(&beacon_packet->buf[7], payload_buffer->RIDPayloadBuffer, payload_len);
+    memcpy(&beacon_packet->buf[7], payload_buffer.data, payload_len);
 
     if (beacon_packet->enabled) {
         esp_err_t disable_ret = esp_wifi_set_vendor_ie(false, WIFI_VND_IE_TYPE_BEACON,

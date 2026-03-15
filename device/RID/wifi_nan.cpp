@@ -56,19 +56,26 @@ void wifi_nan_set_source_mac(WiFi_NAN_packet *packet, const uint8_t mac[6])
  *
  * 接收端在 NAN body 中搜索 0xF1 0x19 (Message Pack 报头) 来定位 RID 数据。
  */
-bool wifi_nan_set_rid_payload(WiFi_NAN_packet *packet, const RIDPayloadBuffer *payload)
+bool wifi_nan_set_rid_payload(WiFi_NAN_packet *packet, RID_Data *rid_data)
 {
-    if (!packet || !payload || payload->length == 0) {
+    if (!packet || !rid_data) {
+        return false;
+    }
+    
+    RIDPayload payload = rid_data->get_payload();
+    uint16_t pl_len = payload.length();
+
+    if (pl_len == 0) {
         return false;
     }
 
-    uint16_t total_len = WIFI_NAN_HDR_LEN + payload->length;
+    uint16_t total_len = WIFI_NAN_HDR_LEN + pl_len;
     if (total_len > sizeof(packet->frame)) {
         ESP_LOGE(TAG, "NAN 帧超长: %u > %u", total_len, (unsigned)sizeof(packet->frame));
         return false;
     }
 
-    memcpy(&packet->frame[WIFI_NAN_HDR_LEN], payload->RIDPayloadBuffer, payload->length);
+    memcpy(&packet->frame[WIFI_NAN_HDR_LEN], payload.data, pl_len);
     packet->length = total_len;
     return true;
 }

@@ -79,54 +79,30 @@ bool ble_5_0_payload_send(uint8_t adv_handle, RID_Data *rid_data, uint8_t *msg_c
     return true;
 }
 
-// 分体发送单个子帧数据，依赖于 RID_Data 内的状态
+// 分体发送单个子帧数据，通过 RID_Data::get_payload() 获取序列化后的子帧再逐个发送
 bool ble_5_0_payload_send_step(uint8_t adv_handle, RID_Data *rid_data, uint8_t *msg_counter)
 {
     if (!rid_data || !msg_counter) {
         return false;
     }
 
+    // get_payload() 内部调用 fixheader() 并通过 union 完成序列化
+    RIDPayload payload = rid_data->get_payload();
+    uint8_t count = payload.SubPacketCount;
+    if (count == 0) {
+        return true;
+    }
+
+    // 根据子帧数量动态计算每帧延时，确保总时长适配 300ms 窗口
+    uint32_t delay_ms = 300 / count;
+    if (delay_ms < 30) delay_ms = 30;
+
     RIDBleADData ble_data;
-    RIDSubframePayloadBuffer subbuf = {0};
-
-    // 分步发送 Basic ID
-    if (rid_data->basic_en) {
-        if (RIDBasicSerialize(&rid_data->basic, &subbuf)) {
-            if (ble_5_0_ad_data_subframe(&subbuf, msg_counter, &ble_data)) {
-                esp_ble_gap_config_ext_adv_data_raw(adv_handle, ble_data.length, ble_data.data);
-            }
+    for (int i = 0; i < count; i++) {
+        if (ble_5_0_ad_data_subframe(&payload.Buffer[i], msg_counter, &ble_data)) {
+            esp_ble_gap_config_ext_adv_data_raw(adv_handle, ble_data.length, ble_data.data);
         }
-        vTaskDelay(pdMS_TO_TICKS(50));
-    }
-
-    // 分步发送 Position / Vector
-    if (rid_data->pos_vec_en) {
-        if (RIDPosVecSerialize(&rid_data->pos_vec, &subbuf)) {
-            if (ble_5_0_ad_data_subframe(&subbuf, msg_counter, &ble_data)) {
-                esp_ble_gap_config_ext_adv_data_raw(adv_handle, ble_data.length, ble_data.data);
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(50));
-    }
-
-    // 分步发送 Description
-    if (rid_data->rd_en) {
-        if (RIDRDSerialize(&rid_data->rd, &subbuf)) {
-            if (ble_5_0_ad_data_subframe(&subbuf, msg_counter, &ble_data)) {
-                esp_ble_gap_config_ext_adv_data_raw(adv_handle, ble_data.length, ble_data.data);
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(50));
-    }
-
-    // 分步发送 System
-    if (rid_data->sys_en) {
-        if (RIDSYSSerialize(&rid_data->sys, &subbuf)) {
-            if (ble_5_0_ad_data_subframe(&subbuf, msg_counter, &ble_data)) {
-                esp_ble_gap_config_ext_adv_data_raw(adv_handle, ble_data.length, ble_data.data);
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(delay_ms));
     }
 
     return true;

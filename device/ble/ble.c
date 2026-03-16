@@ -10,8 +10,8 @@ static const uint8_t EXT_ADV_HANDLE = 0;
 // BLE 5.0 扩展广播参数配置
 static const esp_ble_gap_ext_adv_params_t ext_adv_params = {
     .type            = ESP_BLE_GAP_SET_EXT_ADV_PROP_NONCONN_NONSCANNABLE_UNDIRECTED,
-    .interval_min    = 0x0140,
-    .interval_max    = 0x0140,
+    .interval_min    = 0x0050,
+    .interval_max    = 0x0050,
     .channel_map     = ADV_CHNL_ALL,
     .own_addr_type   = BLE_ADDR_TYPE_PUBLIC,
     .filter_policy   = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,

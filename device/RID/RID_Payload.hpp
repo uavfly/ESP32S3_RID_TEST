@@ -504,18 +504,3 @@ void RIDUasIDSerialize(const char *str, RIDBasicPacket *packet);
 
 // 运行描述字符串序列化（写入 packet->Description，不足补零，超出截断）
 void RIDDescription(const char *str, RIDRDPacket *packet);
-
-// 基本ID报文序列化
-bool RIDBasicSerialize(const RIDBasicPacket *packet, RIDSubframePayloadBuffer *buf);
-
-// RID位置向量报文序列化
-bool RIDPosVecSerialize(const RIDPosVecPacket *packet, RIDSubframePayloadBuffer *buf);
-
-// RID运行描述报文序列化
-bool RIDRDSerialize(const RIDRDPacket *packet, RIDSubframePayloadBuffer *buf);
-
-// RID系统报文序列化
-bool RIDSYSSerialize(const RIDSYSPacket *packet, RIDSubframePayloadBuffer *buf);
-
-// RID Payload 序列化
-bool RIDPayloadSerialize(const RIDPayload *payload, RIDPayloadBuffer *buf);

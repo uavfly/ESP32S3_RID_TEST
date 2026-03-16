@@ -38,7 +38,7 @@ void wifi_raw_tx_init(void)
             .max_connection = 0,
             .authmode      = WIFI_AUTH_OPEN,
             .ssid_hidden   = 1,      // 隐藏内置 SSID，减少干扰
-            .beacon_interval = 100,   // Beacon 间隔 100 TU ≈ 102.4ms（Remote ID 标准默认值）
+            .beacon_interval = 100,   // Beacon 间隔 100 TU ≈ 102ms（最小合法值，须为100的倍数）
         },
     };
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap_cfg));

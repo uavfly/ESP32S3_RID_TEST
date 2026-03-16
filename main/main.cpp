@@ -116,8 +116,16 @@ static void device_init(void)
     rid_data.sys.UARunLevel = 0;
     rid_data.sys_en = true;
 
+    // 初始化操作者ID报文
+    rid_data.operator_id.OperatorIDType = 0; // CAA注册ID
+    memset(rid_data.operator_id.OperatorID, 0, sizeof(rid_data.operator_id.OperatorID));
+    strncpy(reinterpret_cast<char*>(rid_data.operator_id.OperatorID), "OP-ESP32S3-001", 20);
+    rid_data.op_id_en = true;
+
     memset(&beacon_packet, 0, sizeof(beacon_packet));
-    //ESP_ERROR_CHECK(wifi_update_beacon_ie(&beacon_packet, &rid_data) ? ESP_OK : ESP_FAIL);
+    if (!wifi_update_beacon_ie(&beacon_packet, &rid_data)) {
+        ESP_LOGW(TAG, "初始 Beacon IE 设置失败（可能 payload 尚未就绪）");
+    }
 
     ESP_LOGI(TAG, "设备初始化完成");
 }
@@ -138,7 +146,7 @@ extern "C" void app_main(void)
 
     // 使用 xTaskGetTickCount 配合 vTaskDelayUntil 实现严格的绝对时基（2Hz -> 500ms 周期）
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    const TickType_t xFrequency = pdMS_TO_TICKS(600);
+    const TickType_t xFrequency = pdMS_TO_TICKS(500);
 
     while (1) {
         tick = (tick + 2) % 36000;
@@ -180,7 +188,7 @@ extern "C" void app_main(void)
         if(!ble_5_0_payload_send_step(ble_get_ext_adv_handle(), &rid_data, &msg_counter)) {
             ESP_LOGE(TAG, "分体 payload 更新失败");
         }
-        vTaskDelayUntil(&slot_start, pdMS_TO_TICKS(400));
+        vTaskDelayUntil(&slot_start, pdMS_TO_TICKS(300));
 
         // 【窗口 4: 关闭蓝牙广播 (25ms)】
         // 挂起蓝牙，防止其与 Wi-Fi NAN 帧底层硬件资源争夺
@@ -188,16 +196,19 @@ extern "C" void app_main(void)
         esp_ble_gap_ext_adv_stop(1, &ext_adv_inst);
         vTaskDelayUntil(&slot_start, pdMS_TO_TICKS(25));
 
-        // 【窗口 5: 发送NAN帧 (100ms)】
+        // 【窗口 5: 发送NAN帧 + 更新Beacon IE (100ms)】
         slot_start = xTaskGetTickCount();
-        wifi_nan_set_rid_payload(&nan_packet, &rid_data); // 更新NAN载荷
-        for (int i = 0; i < 5; i++) {
+        // 更新 Beacon Vendor IE（硬件自动随下次 Beacon 广播）
+        wifi_update_beacon_ie(&beacon_packet, &rid_data);
+        // 更新 NAN 载荷并突发发送
+        wifi_nan_set_rid_payload(&nan_packet, &rid_data);
+        for (int i = 0; i < 10; i++) {
             wifi_send_nan_frame(&nan_packet);
-            vTaskDelay(pdMS_TO_TICKS(10)); // 降速防止拥塞
+            vTaskDelay(pdMS_TO_TICKS(8));
         }
         ESP_LOGI(TAG, "TDM 循环完毕，tick=%u", tick);
 
-        // 补齐 600ms，保证低频循环，给予蓝牙重开更长的空闲时间
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(600));
+        // 补齐 500ms，严格保证 2Hz 周期
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }

@@ -117,9 +117,9 @@ static void device_init(void)
     rid_data.sys_en = true;
 
     // 初始化操作者ID报文
-    rid_data.operator_id.OperatorIDType = 0; // CAA注册ID
+    rid_data.operator_id.OperatorIDType = 255; // CAA注册ID
     memset(rid_data.operator_id.OperatorID, 0, sizeof(rid_data.operator_id.OperatorID));
-    strncpy(reinterpret_cast<char*>(rid_data.operator_id.OperatorID), "OP-ESP32S3-001", 20);
+    strncpy(reinterpret_cast<char*>(rid_data.operator_id.OperatorID), "ACFLYESP32S3RID001", 20);
     rid_data.op_id_en = true;
 
     memset(&beacon_packet, 0, sizeof(beacon_packet));
@@ -151,7 +151,6 @@ extern "C" void app_main(void)
     while (1) {
         tick = (tick + 2) % 36000;
 
-        // ---------- 1. 数据更新 ----------
         // 更新位置向量报文
         rid_data.pos_vec.OperationalStatus = 2;
         rid_data.pos_vec.Latitude = 300000000;
@@ -165,39 +164,27 @@ extern "C" void app_main(void)
         rid_data.sys.ControlStationLongitude = 1100000000;
         rid_data.sys.Timestamp = tick / 10;
 
-
-        // ---------- 2. 严格时分复用 (TDM) 发送状态机 ----------
-        TickType_t slot_start;
-
-        // 【窗口 1: 开启蓝牙广播 (25ms)】
-        slot_start = xTaskGetTickCount();
+        // 开启蓝牙广播 (25ms)
         esp_ble_gap_ext_adv_start(1, &ext_adv);
-        vTaskDelayUntil(&slot_start, pdMS_TO_TICKS(25));
+        vTaskDelay(pdMS_TO_TICKS(25));
 
-        // 【窗口 2: 发送组合报文 (50ms)】
-        slot_start = xTaskGetTickCount();
+        // 发送组合报文 (50ms)
         if(!ble_5_0_payload_send(ble_get_ext_adv_handle(), &rid_data, &msg_counter)) {
             ESP_LOGE(TAG, "组合报文发送失败");
         }
-        vTaskDelayUntil(&slot_start, pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(50));
 
-        // 【窗口 3: 发送多个单独报文 (300ms)】
-        // 注：ble_5_0_payload_send_step 内有 4 次 50ms 延时，即 200ms
-        // 使用 vTaskDelayUntil 能够精准消化掉函数执行时间和内部延时误差，凑满 300ms 窗口
-        slot_start = xTaskGetTickCount();
+        // 发送多个单独报文 (300ms)
         if(!ble_5_0_payload_send_step(ble_get_ext_adv_handle(), &rid_data, &msg_counter)) {
             ESP_LOGE(TAG, "分体 payload 更新失败");
         }
-        vTaskDelayUntil(&slot_start, pdMS_TO_TICKS(300));
 
-        // 【窗口 4: 关闭蓝牙广播 (25ms)】
+        // 关闭蓝牙广播 (25ms)
         // 挂起蓝牙，防止其与 Wi-Fi NAN 帧底层硬件资源争夺
-        slot_start = xTaskGetTickCount();
         esp_ble_gap_ext_adv_stop(1, &ext_adv_inst);
-        vTaskDelayUntil(&slot_start, pdMS_TO_TICKS(25));
+        vTaskDelay(pdMS_TO_TICKS(25));
 
-        // 【窗口 5: 发送NAN帧 + 更新Beacon IE (100ms)】
-        slot_start = xTaskGetTickCount();
+        // 发送NAN帧 + 更新Beacon IE (80ms)
         // 更新 Beacon Vendor IE（硬件自动随下次 Beacon 广播）
         wifi_update_beacon_ie(&beacon_packet, &rid_data);
         // 更新 NAN 载荷并突发发送
@@ -208,7 +195,8 @@ extern "C" void app_main(void)
         }
         ESP_LOGI(TAG, "TDM 循环完毕，tick=%u", tick);
 
-        // 补齐 500ms，严格保证 2Hz 周期
+        // 用 xLastWakeTime 严格保证 500ms 绝对周期
+        // vTaskDelayUntil保证精确 2Hz
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }
